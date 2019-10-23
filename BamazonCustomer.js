@@ -51,14 +51,15 @@ function products() {
                         type: "number",
                         message: "How much would you like to purchase?"
                     }]).then(function (result) {
-                        var newQuantity = res[0].stock_quantity - result.userquantity;
+                        var newQuantity = parseInt(res[0].stock_quantity - result.userquantity);
                         connection.query(
                             "UPDATE products SET stock_quantity = ? WHERE id = ?", [newQuantity, res[0].id],
                             function (err) {
                                 if (err) throw err;
                                 console.log("Your product was selected successfully!");
-                                // re-prompt the user for they want to bid or post
+                                // re-prompt the user for thier choice
                                 products();
+
                             }
                         );
                     })
@@ -72,10 +73,10 @@ function products() {
 
 
 function Stock_quantity() {
-    // query the database for all items being auctioned
+    // query the database for all items being to be purchased
     connection.query("SELECT * FROM products", function (err, results) {
         if (err) throw err;
-        // once you have the items, prompt the user for which they'd like to bid on
+        // once you have the items, prompt the user for which they'd like to purchase
         inquirer
             .prompt([{
                     name: "choice",
@@ -104,9 +105,9 @@ function Stock_quantity() {
                     }
                 }
 
-                // determine if bid was high enough
+
                 if (chosenItem.price < parseInt(answer.Stock_quantity)) {
-                    // bid was high enough, so update db, let the user know, and start over
+                    //  update db, let the user know, and start over
                     connection.query(
                         "UPDATE products SET ? WHERE ?",
                         [{
@@ -123,7 +124,7 @@ function Stock_quantity() {
                         }
                     );
                 } else {
-                    // bid wasn't high enough, so apologize and start over
+                    // quanatity isn't available, so apologize and start over
                     console.log("Insufficient quantity Try again...");
                     start();
                     connection.end();
