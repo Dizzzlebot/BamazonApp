@@ -24,80 +24,52 @@ connection.connect(function (err) {
 
 function products() {
     console.log("Selecting all products..\n");
-    connection.query("SELECT * FROM products   ", function (err, res) {
+    connection.query("SELECT * FROM products ", function (err, res) {
         if (err) throw err;
         // Log all results of the SELECT statement
         console.table(res);
         //connection.end();
-        start();
+        inquirer.prompt([{
+                name: "choice",
+                type: "rawlist",
+                choices: function () {
+                    var choiceArray = [];
+                    for (var i = 0; i < res.length; i++) {
+                        choiceArray.push(res[i].product_name);
+                    }
+                    return choiceArray;
+                },
+                message: "What product would you like to purchase?"
+            }])
+            .then(function (answer) {
+                // when finished prompting, insert a new item into the db with that info
+                connection.query("SELECT * FROM products WHERE product_name=?", [answer.choice], function (err, res) {
+                    if (err) throw err;
+                    console.log(res);
+                    inquirer.prompt([{
+                        name: "userquantity",
+                        type: "number",
+                        message: "How much would you like to purchase?"
+                    }]).then(function (result) {
+                        var newQuantity = res[0].stock_quantity - result.userquantity;
+                        connection.query(
+                            "UPDATE products SET stock_quantity = ? WHERE id = ?", [newQuantity, res[0].id],
+                            function (err) {
+                                if (err) throw err;
+                                console.log("Your product was selected successfully!");
+                                // re-prompt the user for they want to bid or post
+                                products();
+                            }
+                        );
+                    })
+
+                })
+            });
     });
 }
 
-function start() {
-    inquirer
-        .prompt({
-            name: "idOrStock_quantity",
-            type: "list",
-            message: "Would you like to buy [id] a product or how many [Stock_quantiy] on a product?",
-            choices: ["ID", "STOCK_QUANTITY", "EXIT"]
-        })
-        .then(function (answer) {
-            // based on their answer, either call the bid or the post functions
-            if (answer.idOrStock_quantity === "ID") {
-                id();
-            } else if (answer.idOrStock_quantity === "STOCK_QUANTITY") {
-                Stock_quantity();
-            } else {
-                connection.end();
-            }
-        });
-};
 
 
-// function to handle posting new items up for auction
-function id() {
-    // prompt for info about the item being put up for auction
-    inquirer
-        .prompt([{
-                name: "product_name",
-                type: "input",
-                message: "What is the item you would like to buy?"
-            },
-            {
-                name: "department_name",
-                type: "input",
-                message: "What department would you like to place your order in?"
-            },
-            {
-                name: "price",
-                type: "input",
-                message: "The amount is?",
-                validate: function (value) {
-                    if (isNaN(value) === false) {
-                        return true;
-                    }
-                    return false;
-                }
-            }
-        ])
-        .then(function (answer) {
-            // when finished prompting, insert a new item into the db with that info
-            connection.query(
-                "INSERT INTO products SET ?", {
-                    product_name: answer.products,
-                    department_name: answer.department,
-                    price: answer.price || 0,
-                    //highest_bid: answer.startingBid || 0
-                },
-                function (err) {
-                    if (err) throw err;
-                    console.log("Your product was selected successfully!");
-                    // re-prompt the user for they want to bid or post
-                    start();
-                }
-            );
-        });
-}
 
 function Stock_quantity() {
     // query the database for all items being auctioned
@@ -107,7 +79,7 @@ function Stock_quantity() {
         inquirer
             .prompt([{
                     name: "choice",
-                    type: "rawlist",
+                    type: "input",
                     choices: function () {
                         var choiceArray = [];
                         for (var i = 0; i < results.length; i++) {
